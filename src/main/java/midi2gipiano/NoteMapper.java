@@ -102,11 +102,17 @@ public class NoteMapper {
             adjusted = (int)Math.round(fullCenter + (adjusted - fullCenter) * fullScale) + fullShift;
         }
 
-        /* Edge & Full modes: ensure result stays inside 3-octave window
-           to prevent the %3 wrap from cycling notes. */
-        if (mode != MODE_WRAP) {
+        /* Edge & Full: ensure result stays inside 3-octave window.
+           Edge folds by octave; Full clamps (the compression already
+           mapped the full range into 36 semitones). */
+        if (mode == MODE_FULL && useFull) {
             int low  = baseOctave * 12;
-            int high = baseOctave * 12 + 35;
+            int high = low + 35;
+            if (adjusted < low) adjusted = low;
+            if (adjusted > high) adjusted = high;
+        } else if (mode == MODE_EDGE) {
+            int low  = baseOctave * 12;
+            int high = low + 35;
             if (adjusted < low) {
                 int shift = ((low - adjusted + 11) / 12) * 12;
                 adjusted += shift;
