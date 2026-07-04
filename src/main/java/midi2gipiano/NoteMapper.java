@@ -1,8 +1,15 @@
 package midi2gipiano;
 
+import midi2gipiano.model.MidiNote;
+import java.util.List;
+
 public class NoteMapper {
 
     public static final int KEY_COUNT = 21;
+
+    public static final int MODE_WRAP = 0;
+    public static final int MODE_EDGE = 1;
+    public static final int MODE_FULL = 2;
 
     private static final int[] PITCH_TO_DEGREE = {
         0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6
@@ -21,7 +28,13 @@ public class NoteMapper {
     };
 
     private int baseOctave = 4;
-    private int transpose = 0;
+    private int transpose  = 0;
+    private int mode       = MODE_WRAP;
+
+    private double fullScale  = 1.0;
+    private double fullCenter = 0;
+    private int    fullShift  = 0;
+    private boolean useFull   = false;
 
     public NoteMapper() {}
 
@@ -30,8 +43,61 @@ public class NoteMapper {
         this.transpose = transpose;
     }
 
+    public void setMode(int mode) {
+        this.mode = mode;
+        this.useFull = false;
+    }
+
+    public int getMode() { return mode; }
+
+    /** Pre-scan notes and compute full-compression parameters using adjusted values. */
+    public void prepare(List<MidiNote> notes) {
+        useFull = false;
+        if (mode != MODE_FULL || notes == null || notes.isEmpty()) return;
+
+        int minNote = 127, maxNote = 0;
+        for (MidiNote n : notes) {
+            int nn = n.noteNumber + transpose;
+            if (nn < minNote) minNote = nn;
+            if (nn > maxNote) maxNote = nn;
+        }
+        int range = maxNote - minNote;
+        if (range <= 0) return;
+
+        fullScale  = 36.0 / range;
+        fullCenter = (minNote + maxNote) / 2.0;
+
+        int cmprMin  = (int)Math.round(fullCenter + (minNote - fullCenter) * fullScale);
+        int cmprMax  = (int)Math.round(fullCenter + (maxNote - fullCenter) * fullScale);
+        int targetLo = baseOctave * 12;
+        int targetHi = targetLo + 35;
+        if (cmprMin < targetLo) {
+            fullShift = targetLo - cmprMin;
+        } else if (cmprMax > targetHi) {
+            fullShift = targetHi - cmprMax;
+        } else {
+            fullShift = 0;
+        }
+        useFull = true;
+    }
+
     public int map(int midiNoteNumber) {
         int adjusted = midiNoteNumber + transpose;
+
+        if (mode == MODE_EDGE) {
+            int low  = baseOctave * 12;
+            int high = baseOctave * 12 + 35;
+            if (adjusted < low) {
+                int shift = ((low - adjusted + 11) / 12) * 12;
+                adjusted += shift;
+            } else if (adjusted > high) {
+                int shift = ((adjusted - high + 11) / 12) * 12;
+                adjusted -= shift;
+            }
+        } else if (mode == MODE_FULL && useFull) {
+            adjusted = (int)Math.round(fullCenter + (adjusted - fullCenter) * fullScale) + fullShift;
+        }
+
         int octave = adjusted / 12 - 1;
         int pc = ((adjusted % 12) + 12) % 12;
         int degree = PITCH_TO_DEGREE[pc];
@@ -39,20 +105,20 @@ public class NoteMapper {
         return row * 7 + degree;
     }
 
-    public int getBaseOctave() {
-        return baseOctave;
-    }
-
+    public int getBaseOctave() { return baseOctave; }
     public void setBaseOctave(int baseOctave) {
-        this.baseOctave = baseOctave;
+        if (this.baseOctave != baseOctave) {
+            this.baseOctave = baseOctave;
+            useFull = false;
+        }
     }
 
-    public int getTranspose() {
-        return transpose;
-    }
-
+    public int getTranspose() { return transpose; }
     public void setTranspose(int transpose) {
-        this.transpose = transpose;
+        if (this.transpose != transpose) {
+            this.transpose = transpose;
+            useFull = false;
+        }
     }
 
     public static char keyLetter(int keyIndex) {

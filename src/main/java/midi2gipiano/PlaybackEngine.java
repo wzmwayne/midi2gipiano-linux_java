@@ -45,6 +45,7 @@ public class PlaybackEngine {
         this.currentPositionMicros = 0;
         this.currentMidiNote = -1;
         this.currentKeyIndex = -1;
+        mapper.prepare(notes);
     }
 
     public void setListener(Listener listener) {

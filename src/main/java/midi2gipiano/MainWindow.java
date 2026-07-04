@@ -27,6 +27,8 @@ public class MainWindow extends JFrame {
     private JProgressBar progressBar;
     private JSpinner baseOctaveSpinner;
     private JSpinner transposeSpinner;
+    private JRadioButton modeWrap, modeEdge, modeFull;
+    private ButtonGroup modeGroup;
     private File currentFile;
     private ParsedMidi parsed;
 
@@ -245,8 +247,12 @@ public class MainWindow extends JFrame {
     }
 
     private JPanel createSettingsPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 4));
+        JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createTitledBorder("\u8BBE\u7F6E"));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(2, 6, 2, 6);
+        gbc.fill = GridBagConstraints.NONE;
 
         baseOctaveSpinner = new JSpinner(new SpinnerNumberModel(4, 0, 9, 1));
         baseOctaveSpinner.setPreferredSize(new Dimension(60, 24));
@@ -255,19 +261,48 @@ public class MainWindow extends JFrame {
 
         baseOctaveSpinner.addChangeListener(e -> {
             mapper.setBaseOctave((Integer) baseOctaveSpinner.getValue());
+            rePrepare();
         });
         transposeSpinner.addChangeListener(e -> {
             mapper.setTranspose((Integer) transposeSpinner.getValue());
+            rePrepare();
         });
 
         hotkeyBtn = new JButton("\u8BBE\u7F6E\u5FEB\u6377\u952E");
         hotkeyBtn.addActionListener(e -> captureHotkey());
 
-        panel.add(new JLabel("\u57FA\u7840\u516B\u5EA6:"));
-        panel.add(baseOctaveSpinner);
-        panel.add(new JLabel("\u79FB\u8C03(\u534A\u97F3):"));
-        panel.add(transposeSpinner);
-        panel.add(hotkeyBtn);
+        // row 0: octave & transpose
+        gbc.gridy = 0;
+        gbc.gridx = 0; panel.add(new JLabel("\u57FA\u7840\u516B\u5EA6:"), gbc);
+        gbc.gridx = 1; panel.add(baseOctaveSpinner, gbc);
+        gbc.gridx = 2; panel.add(new JLabel("\u79FB\u8C03(\u534A\u97F3):"), gbc);
+        gbc.gridx = 3; panel.add(transposeSpinner, gbc);
+        gbc.gridx = 4; panel.add(hotkeyBtn, gbc);
+
+        // row 1: mode radio buttons
+        modeWrap = new JRadioButton("\u73AF\u7ED5(Wrap)");
+        modeEdge = new JRadioButton("\u8FB9\u7F18(Edge)");
+        modeFull = new JRadioButton("\u5168\u538B\u7F29(Full)");
+        modeGroup = new ButtonGroup();
+        modeGroup.add(modeWrap);
+        modeGroup.add(modeEdge);
+        modeGroup.add(modeFull);
+        modeWrap.setSelected(true);
+
+        modeWrap.addActionListener(e -> { mapper.setMode(NoteMapper.MODE_WRAP); rePrepare(); });
+        modeEdge.addActionListener(e -> { mapper.setMode(NoteMapper.MODE_EDGE); rePrepare(); });
+        modeFull.addActionListener(e -> { mapper.setMode(NoteMapper.MODE_FULL); rePrepare(); });
+
+        JPanel modePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
+        modePanel.add(modeWrap);
+        modePanel.add(modeEdge);
+        modePanel.add(modeFull);
+
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        gbc.gridwidth = 5;
+        panel.add(modePanel, gbc);
+
         return panel;
     }
 
@@ -428,6 +463,12 @@ public class MainWindow extends JFrame {
 
         hotkeyLabel.setText(hotkeyManager.getStatus());
         hotkeyLabel.setForeground(hotkeyManager.isRegistered() ? new Color(0x33, 0x66, 0x33) : Color.GRAY);
+    }
+
+    private void rePrepare() {
+        if (parsed != null) {
+            mapper.prepare(parsed.notes);
+        }
     }
 
     private String noteName(int note) {
