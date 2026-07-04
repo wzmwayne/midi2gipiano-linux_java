@@ -1,0 +1,34 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'midi2gipiano'
+version = '1.0.0'
+
+application {
+    mainClass = 'midi2gipiano.App'
+}
+
+compileJava {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.github.kwhat:jnativehook:2.2.2'
+    implementation 'net.java.dev.jna:jna:5.14.0'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'midi2gipiano.App'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
