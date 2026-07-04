@@ -82,7 +82,7 @@ public class NoteMapper {
     }
 
     public int map(int midiNoteNumber) {
-        int adjusted = midiNoteNumber + transpose;
+        int adjusted = midiNoteNumber;
 
         if (mode == MODE_EDGE) {
             int low  = baseOctave * 12;
@@ -94,7 +94,11 @@ public class NoteMapper {
                 int shift = ((adjusted - high + 11) / 12) * 12;
                 adjusted -= shift;
             }
-        } else if (mode == MODE_FULL && useFull) {
+        }
+
+        adjusted += transpose;
+
+        if (mode == MODE_FULL && useFull) {
             adjusted = (int)Math.round(fullCenter + (adjusted - fullCenter) * fullScale) + fullShift;
         }
 
